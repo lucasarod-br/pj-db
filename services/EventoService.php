@@ -22,11 +22,28 @@ class EventoService {
             throw new Exception("A data de início não pode ser anterior a hoje");
         }
         
+        // Validar foto se fornecida
+        if (isset($dados['foto']) && !empty($dados['foto'])) {
+            $this->validarFoto($dados['foto']);
+        }
+        
         return $this->eventoRepository->criar($dados);
     }
     
     public function listarEventos() {
-        return $this->eventoRepository->listar();
+        $eventos = $this->eventoRepository->listar();
+        
+        // Converter foto BLOB para base64 para cada evento
+        foreach ($eventos as &$evento) {
+            if ($evento['foto']) {
+                $evento['foto'] = base64_encode($evento['foto']);
+                $evento['has_foto'] = true;
+            } else {
+                $evento['has_foto'] = false;
+            }
+        }
+        
+        return $eventos;
     }
     
     public function buscarEventoPorId($id) {
@@ -37,6 +54,14 @@ class EventoService {
         $evento = $this->eventoRepository->buscarPorId($id);
         if (!$evento) {
             throw new Exception("Evento não encontrado");
+        }
+        
+        // Converter foto BLOB para base64 se existir
+        if ($evento['foto']) {
+            $evento['foto'] = base64_encode($evento['foto']);
+            $evento['has_foto'] = true;
+        } else {
+            $evento['has_foto'] = false;
         }
         
         return $evento;
@@ -60,6 +85,11 @@ class EventoService {
         
         if ($dados['data_inicio'] > $dados['data_fim']) {
             throw new Exception("A data de início não pode ser maior que a data de fim");
+        }
+        
+        // Validar foto se fornecida
+        if (isset($dados['foto']) && !empty($dados['foto'])) {
+            $this->validarFoto($dados['foto']);
         }
         
         return $this->eventoRepository->atualizar($id, $dados);
@@ -94,12 +124,107 @@ class EventoService {
             return $evento['data_inicio'] >= date('Y-m-d');
         });
         
+        // Converter fotos para base64
+        foreach ($eventosProximos as &$evento) {
+            if ($evento['foto']) {
+                $evento['foto'] = base64_encode($evento['foto']);
+                $evento['has_foto'] = true;
+            } else {
+                $evento['has_foto'] = false;
+            }
+        }
+        
         return array_slice($eventosProximos, 0, 5);
     }
     
     public function contarEventos() {
         $eventos = $this->eventoRepository->listar();
         return count($eventos);
+    }
+    
+    /**
+     * Validar dados da foto
+     */
+    private function validarFoto($foto) {
+        // Verificar se é uma string válida (BLOB)
+        if (!is_string($foto)) {
+            throw new Exception("Formato de foto inválido");
+        }
+        
+        // Verificar tamanho máximo (2MB)
+        $maxSize = 2 * 1024 * 1024; // 2MB
+        if (strlen($foto) > $maxSize) {
+            throw new Exception("Arquivo de foto muito grande. Máximo 2MB");
+        }
+        
+        // Verificar se é uma imagem válida usando finfo
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->buffer($foto);
+        
+        $allowedTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp'
+        ];
+        
+        if (!in_array($mimeType, $allowedTypes)) {
+            throw new Exception("Tipo de arquivo não permitido. Use apenas JPEG, PNG, GIF ou WebP");
+        }
+    }
+    
+    /**
+     * Processar foto do upload
+     */
+    public function processarFotoUpload($arquivo) {
+        if (!isset($arquivo) || $arquivo['error'] !== UPLOAD_ERR_OK) {
+            return null;
+        }
+        
+        // Verificar tamanho
+        $maxSize = 2 * 1024 * 1024; // 2MB
+        if ($arquivo['size'] > $maxSize) {
+            throw new Exception("Arquivo muito grande. Máximo 2MB");
+        }
+        
+        // Verificar tipo
+        $allowedTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp'
+        ];
+        
+        if (!in_array($arquivo['type'], $allowedTypes)) {
+            throw new Exception("Tipo de arquivo não permitido. Use apenas JPEG, PNG, GIF ou WebP");
+        }
+        
+        // Ler conteúdo do arquivo
+        return file_get_contents($arquivo['tmp_name']);
+    }
+    
+    /**
+     * Processar foto em base64
+     */
+    public function processarFotoBase64($base64String) {
+        if (empty($base64String)) {
+            return null;
+        }
+        
+        // Remover prefixo data:image se existir
+        $foto = preg_replace('#^data:image/\w+;base64,#i', '', $base64String);
+        
+        // Decodificar base64
+        $fotoDecoded = base64_decode($foto);
+        
+        if ($fotoDecoded === false) {
+            throw new Exception("Erro ao processar imagem");
+        }
+        
+        // Validar a foto decodificada
+        $this->validarFoto($fotoDecoded);
+        
+        return $fotoDecoded;
     }
 }
 ?>

@@ -26,7 +26,34 @@ try {
             break;
             
         case 'POST':
-            $input = json_decode(file_get_contents('php://input'), true);
+            // Verificar se é FormData (com arquivo) ou JSON
+            $contentType = isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : '';
+            
+            if (strpos($contentType, 'multipart/form-data') !== false) {
+                // FormData com arquivo
+                $input = [
+                    'nome' => $_POST['nome'] ?? '',
+                    'descricao' => $_POST['descricao'] ?? '',
+                    'data_inicio' => $_POST['data_inicio'] ?? '',
+                    'data_fim' => $_POST['data_fim'] ?? '',
+                    'id_categoria' => $_POST['id_categoria'] ?? '',
+                    'id_local' => $_POST['id_local'] ?? ''
+                ];
+                
+                // Processar arquivo de imagem usando o service
+                if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+                    $input['foto'] = $eventoService->processarFotoUpload($_FILES['foto']);
+                }
+            } else {
+                // JSON normal
+                $input = json_decode(file_get_contents('php://input'), true);
+                
+                // Processar foto em base64 usando o service
+                if (isset($input['foto']) && !empty($input['foto'])) {
+                    $input['foto'] = $eventoService->processarFotoBase64($input['foto']);
+                }
+            }
+            
             $id = $eventoService->criarEvento($input);
             echo json_encode(['success' => true, 'id' => $id, 'message' => 'Evento criado com sucesso']);
             break;
@@ -35,7 +62,14 @@ try {
             if (!isset($_GET['id'])) {
                 throw new Exception('ID é obrigatório para atualização');
             }
+            
             $input = json_decode(file_get_contents('php://input'), true);
+            
+            // Processar foto em base64 usando o service
+            if (isset($input['foto']) && !empty($input['foto'])) {
+                $input['foto'] = $eventoService->processarFotoBase64($input['foto']);
+            }
+            
             $eventoService->atualizarEvento($_GET['id'], $input);
             echo json_encode(['success' => true, 'message' => 'Evento atualizado com sucesso']);
             break;

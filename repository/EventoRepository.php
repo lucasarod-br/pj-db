@@ -10,8 +10,8 @@ class EventoRepository {
     }
     
     public function criar($dados) {
-        $sql = "INSERT INTO Evento (nome, descricao, data_inicio, data_fim, id_categoria, id_local) 
-                VALUES (:nome, :descricao, :data_inicio, :data_fim, :id_categoria, :id_local)";
+        $sql = "INSERT INTO Evento (nome, descricao, data_inicio, data_fim, id_categoria, id_local, foto) 
+                VALUES (:nome, :descricao, :data_inicio, :data_fim, :id_categoria, :id_local, :foto)";
         
         $stmt = $this->conn->prepare($sql);
         
@@ -21,6 +21,14 @@ class EventoRepository {
         $stmt->bindParam(':data_fim', $dados['data_fim']);
         $stmt->bindParam(':id_categoria', $dados['id_categoria']);
         $stmt->bindParam(':id_local', $dados['id_local']);
+        
+        // Tratar foto como BLOB
+        if (isset($dados['foto']) && !empty($dados['foto'])) {
+            $stmt->bindParam(':foto', $dados['foto'], PDO::PARAM_LOB);
+        } else {
+            $fotoNull = null;
+            $stmt->bindParam(':foto', $fotoNull, PDO::PARAM_NULL);
+        }
         
         if ($stmt->execute()) {
             return $this->conn->lastInsertId();
@@ -56,24 +64,56 @@ class EventoRepository {
     }
     
     public function atualizar($id, $dados) {
-        $sql = "UPDATE Evento SET 
-                nome = :nome, 
-                descricao = :descricao, 
-                data_inicio = :data_inicio, 
-                data_fim = :data_fim, 
-                id_categoria = :id_categoria, 
-                id_local = :id_local 
-                WHERE id_evento = :id";
-        
-        $stmt = $this->conn->prepare($sql);
-        
-        $stmt->bindParam(':id', $id);
-        $stmt->bindParam(':nome', $dados['nome']);
-        $stmt->bindParam(':descricao', $dados['descricao']);
-        $stmt->bindParam(':data_inicio', $dados['data_inicio']);
-        $stmt->bindParam(':data_fim', $dados['data_fim']);
-        $stmt->bindParam(':id_categoria', $dados['id_categoria']);
-        $stmt->bindParam(':id_local', $dados['id_local']);
+        // Verificar se a foto está sendo atualizada
+        if (isset($dados['foto'])) {
+            $sql = "UPDATE Evento SET 
+                    nome = :nome, 
+                    descricao = :descricao, 
+                    data_inicio = :data_inicio, 
+                    data_fim = :data_fim, 
+                    id_categoria = :id_categoria, 
+                    id_local = :id_local,
+                    foto = :foto
+                    WHERE id_evento = :id";
+            
+            $stmt = $this->conn->prepare($sql);
+            
+            $stmt->bindParam(':id', $id);
+            $stmt->bindParam(':nome', $dados['nome']);
+            $stmt->bindParam(':descricao', $dados['descricao']);
+            $stmt->bindParam(':data_inicio', $dados['data_inicio']);
+            $stmt->bindParam(':data_fim', $dados['data_fim']);
+            $stmt->bindParam(':id_categoria', $dados['id_categoria']);
+            $stmt->bindParam(':id_local', $dados['id_local']);
+            
+            // Tratar foto como BLOB
+            if (!empty($dados['foto'])) {
+                $stmt->bindParam(':foto', $dados['foto'], PDO::PARAM_LOB);
+            } else {
+                $fotoNull = null;
+                $stmt->bindParam(':foto', $fotoNull, PDO::PARAM_NULL);
+            }
+        } else {
+            // Atualizar sem modificar a foto
+            $sql = "UPDATE Evento SET 
+                    nome = :nome, 
+                    descricao = :descricao, 
+                    data_inicio = :data_inicio, 
+                    data_fim = :data_fim, 
+                    id_categoria = :id_categoria, 
+                    id_local = :id_local 
+                    WHERE id_evento = :id";
+            
+            $stmt = $this->conn->prepare($sql);
+            
+            $stmt->bindParam(':id', $id);
+            $stmt->bindParam(':nome', $dados['nome']);
+            $stmt->bindParam(':descricao', $dados['descricao']);
+            $stmt->bindParam(':data_inicio', $dados['data_inicio']);
+            $stmt->bindParam(':data_fim', $dados['data_fim']);
+            $stmt->bindParam(':id_categoria', $dados['id_categoria']);
+            $stmt->bindParam(':id_local', $dados['id_local']);
+        }
         
         return $stmt->execute();
     }
