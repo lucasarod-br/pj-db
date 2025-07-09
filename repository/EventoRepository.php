@@ -127,6 +127,86 @@ class EventoRepository {
         return $stmt->execute();
     }
     
+    public function verificarInscricoesAtivas($id_evento) {
+        $sql = "SELECT COUNT(*) FROM Inscricao 
+                WHERE id_evento = :id_evento 
+                AND status IN ('Confirmada', 'Presente')";
+        
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':id_evento', $id_evento);
+        $stmt->execute();
+        
+        return $stmt->fetchColumn();
+    }
+    
+    public function deletarComCascata($id_evento) {
+        try {
+            // Iniciar transação
+            $this->conn->beginTransaction();
+            
+            // 1. Excluir relacionamentos Atividade_Palestrante (via atividades do evento)
+            $sql = "DELETE FROM Atividade_Palestrante 
+                    WHERE id_atividade IN (
+                        SELECT id_atividade FROM Atividade WHERE id_evento = :id_evento
+                    )";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':id_evento', $id_evento);
+            $stmt->execute();
+            
+            // 2. Excluir atividades do evento
+            $sql = "DELETE FROM Atividade WHERE id_evento = :id_evento";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':id_evento', $id_evento);
+            $stmt->execute();
+            
+            // 3. Excluir certificados do evento
+            $sql = "DELETE FROM Certificado WHERE id_evento = :id_evento";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':id_evento', $id_evento);
+            $stmt->execute();
+            
+            // 4. Excluir feedbacks do evento
+            $sql = "DELETE FROM Feedback WHERE id_evento = :id_evento";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':id_evento', $id_evento);
+            $stmt->execute();
+            
+            // 5. Excluir premiações do evento
+            $sql = "DELETE FROM Premiacao WHERE id_evento = :id_evento";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':id_evento', $id_evento);
+            $stmt->execute();
+            
+            // 6. Excluir relacionamentos organizador-evento
+            $sql = "DELETE FROM Organiza_Evento WHERE id_evento = :id_evento";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':id_evento', $id_evento);
+            $stmt->execute();
+            
+            // 7. Excluir inscrições do evento
+            $sql = "DELETE FROM Inscricao WHERE id_evento = :id_evento";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':id_evento', $id_evento);
+            $stmt->execute();
+            
+            // 8. Finalmente, excluir o evento
+            $sql = "DELETE FROM Evento WHERE id_evento = :id_evento";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':id_evento', $id_evento);
+            $result = $stmt->execute();
+            
+            // Confirmar transação
+            $this->conn->commit();
+            
+            return $result;
+            
+        } catch (Exception $e) {
+            // Reverter transação em caso de erro
+            $this->conn->rollBack();
+            throw new Exception("Erro ao excluir evento: " . $e->getMessage());
+        }
+    }
+    
     public function listarCategorias() {
         $sql = "SELECT * FROM Categoria ORDER BY nome";
         $stmt = $this->conn->prepare($sql);

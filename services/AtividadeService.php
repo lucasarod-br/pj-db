@@ -9,7 +9,6 @@ class AtividadeService {
     }
     
     public function criarAtividade($dados) {
-        // Validações
         if (empty($dados['titulo']) || empty($dados['tipo']) || empty($dados['id_evento'])) {
             throw new Exception("Título, tipo e evento são obrigatórios");
         }
@@ -46,14 +45,11 @@ class AtividadeService {
         if (empty($id)) {
             throw new Exception("ID é obrigatório");
         }
-        
-        // Verificar se a atividade existe
         $atividade = $this->atividadeRepository->buscarPorId($id);
         if (!$atividade) {
             throw new Exception("Atividade não encontrada");
         }
         
-        // Validações
         if (empty($dados['titulo']) || empty($dados['tipo']) || empty($dados['id_evento'])) {
             throw new Exception("Título, tipo e evento são obrigatórios");
         }
@@ -66,7 +62,6 @@ class AtividadeService {
             throw new Exception("ID é obrigatório");
         }
         
-        // Verificar se a atividade existe
         $atividade = $this->atividadeRepository->buscarPorId($id);
         if (!$atividade) {
             throw new Exception("Atividade não encontrada");

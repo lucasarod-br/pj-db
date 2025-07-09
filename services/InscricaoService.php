@@ -9,17 +9,14 @@ class InscricaoService {
     }
     
     public function criarInscricao($dados) {
-        // Validações
         if (empty($dados['id_participante']) || empty($dados['id_evento'])) {
             throw new Exception("Participante e evento são obrigatórios");
         }
         
-        // Verificar se já existe uma inscrição
         if ($this->inscricaoRepository->verificarInscricaoExistente($dados['id_participante'], $dados['id_evento'])) {
             throw new Exception("Participante já inscrito neste evento");
         }
         
-        // Definir status padrão e data de inscrição
         if (empty($dados['status'])) {
             $dados['status'] = 'Confirmada';
         }
@@ -69,13 +66,11 @@ class InscricaoService {
             throw new Exception("ID do participante e do evento são obrigatórios");
         }
         
-        // Verificar se a inscrição existe
         $inscricao = $this->inscricaoRepository->buscarPorId($id_participante, $id_evento);
         if (!$inscricao) {
             throw new Exception("Inscrição não encontrada");
         }
         
-        // Validações
         if (empty($dados['status'])) {
             throw new Exception("Status é obrigatório");
         }
@@ -92,7 +87,6 @@ class InscricaoService {
             throw new Exception("ID do participante e do evento são obrigatórios");
         }
         
-        // Verificar se a inscrição existe
         $inscricao = $this->inscricaoRepository->buscarPorId($id_participante, $id_evento);
         if (!$inscricao) {
             throw new Exception("Inscrição não encontrada");

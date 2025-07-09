@@ -106,7 +106,14 @@ class EventoService {
             throw new Exception("Evento não encontrado");
         }
         
-        return $this->eventoRepository->deletar($id);
+        // Verificar se há inscrições confirmadas ou presentes no evento
+        $inscricoesAtivas = $this->eventoRepository->verificarInscricoesAtivas($id);
+        if ($inscricoesAtivas > 0) {
+            throw new Exception("Não é possível excluir o evento. Existem {$inscricoesAtivas} inscrições ativas (confirmadas ou presentes). Cancele as inscrições primeiro.");
+        }
+        
+        // Realizar exclusão em cascata
+        return $this->eventoRepository->deletarComCascata($id);
     }
     
     public function obterCategorias() {
