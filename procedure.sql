@@ -7,7 +7,6 @@ CREATE PROCEDURE sp_inserir_feedback(
     IN p_comentario VARCHAR(255)
 )
 BEGIN
-    -- Verifica se o participante está inscrito no evento
     IF NOT EXISTS (
         SELECT 1
         FROM Inscricao
@@ -17,7 +16,6 @@ BEGIN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Participante não inscrito neste evento.';
     ELSE
-        -- Insere o feedback
         INSERT INTO Feedback (
             nota,
             comentario,
